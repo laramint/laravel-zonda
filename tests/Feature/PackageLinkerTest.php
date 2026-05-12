@@ -43,7 +43,9 @@ it('writes a path repository and require entry into sandbox composer.json', func
     expect($composer['repositories']['zonda-package']['type'])->toBe('path')
         ->and($composer['repositories']['zonda-package']['url'])->toBe($packageRoot)
         ->and($composer['repositories']['zonda-package']['options']['symlink'])->toBeTrue()
-        ->and($composer['require']['acme/widget'])->toBe('*');
+        ->and($composer['require']['acme/widget'])->toBe('*')
+        ->and($composer['minimum-stability'])->toBe('dev')
+        ->and($composer['prefer-stable'])->toBeTrue();
 
     $state = json_decode(file_get_contents($this->tmp . '/.zonda/sandboxes/laravel-12/state.json'), true);
     expect($state['linked'])->toBe($packageRoot);

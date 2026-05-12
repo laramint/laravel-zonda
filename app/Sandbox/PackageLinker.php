@@ -31,7 +31,8 @@ class PackageLinker
         $packageName = "{$pkg->vendor}/{$pkg->name}";
         $data['require'] ??= [];
         $data['require'][$packageName] = '*';
-        $data['minimum-stability'] = $data['minimum-stability'] ?? 'dev';
+        $data['minimum-stability'] = 'dev';
+        $data['prefer-stable'] = true;
 
         file_put_contents(
             $sandboxComposer,
