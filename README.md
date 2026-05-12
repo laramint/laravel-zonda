@@ -34,12 +34,22 @@ zonda --help
 
 ### PHAR
 
-Grab `zonda` from the [GitHub releases](https://github.com/laramint/laravel-zonda/releases) page (or build it yourself — see below):
+Download the latest release directly:
 
 ```bash
+curl -L https://github.com/laramint/laravel-zonda/releases/latest/download/zonda -o zonda
 chmod +x zonda
 sudo mv zonda /usr/local/bin/zonda
+zonda --version
 ```
+
+To pin a specific version, replace `latest/download` with `download/vX.Y.Z`:
+
+```bash
+curl -L https://github.com/laramint/laravel-zonda/releases/download/v0.1.0/zonda -o zonda
+```
+
+Or browse the [GitHub releases](https://github.com/laramint/laravel-zonda/releases) page and grab the `zonda` asset manually.
 
 ## Quickstart
 
