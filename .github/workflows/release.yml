@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. 1.2.3, without the leading v)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & publish PHAR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            TAG="v${VERSION}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          fi
+          echo "tag=${TAG}"         >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
+
+      - name: Run test suite
+        run: |
+          composer install --no-interaction --prefer-dist
+          ./vendor/bin/pest
+
+      - name: Build PHAR
+        run: php zonda app:build zonda --build-version="${{ steps.version.outputs.version }}" --no-interaction
+
+      - name: Verify PHAR
+        run: |
+          chmod +x builds/zonda
+          ./builds/zonda --version
+          ./builds/zonda list
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: builds/zonda

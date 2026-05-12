@@ -1,0 +1,5 @@
+<?php
+
+it('{{TestName}}', function () {
+    expect(true)->toBeTrue();
+});

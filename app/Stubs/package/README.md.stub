@@ -1,0 +1,20 @@
+# {{Name}}
+
+A Laravel package scaffolded with [Zonda](https://github.com/laramint/laravel-zonda).
+
+## Installation
+
+```bash
+composer require {{vendor}}/{{name}}
+```
+
+## Usage
+
+TODO
+
+## Development
+
+```bash
+zonda artisan list   # run any artisan command against the Zonda sandbox
+zonda test           # run the package test suite
+```

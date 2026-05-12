@@ -1,0 +1,83 @@
+<?php
+
+namespace {{Namespace}};
+
+use Illuminate\Support\ServiceProvider;
+
+class {{ProviderClass}} extends ServiceProvider
+{
+    public function register(): void
+    {
+        $config = $this->packagePath('config/{{shortName}}.php');
+        if (is_file($config)) {
+            $this->mergeConfigFrom($config, '{{shortName}}');
+        }
+    }
+
+    public function boot(): void
+    {
+        $base = $this->packagePath();
+
+        if (is_dir($base . '/database/migrations')) {
+            $this->loadMigrationsFrom($base . '/database/migrations');
+        }
+
+        if (is_dir($base . '/resources/views')) {
+            $this->loadViewsFrom($base . '/resources/views', '{{shortName}}');
+        }
+
+        if (is_dir($base . '/resources/lang')) {
+            $this->loadTranslationsFrom($base . '/resources/lang', '{{shortName}}');
+        } elseif (is_dir($base . '/lang')) {
+            $this->loadTranslationsFrom($base . '/lang', '{{shortName}}');
+        }
+
+        foreach (['web', 'api', 'console'] as $routeFile) {
+            $path = $base . '/routes/' . $routeFile . '.php';
+            if (is_file($path)) {
+                $this->loadRoutesFrom($path);
+            }
+        }
+
+        if ($this->app->runningInConsole()) {
+            $this->registerPublishing($base);
+        }
+    }
+
+    private function registerPublishing(string $base): void
+    {
+        $configFile = $base . '/config/{{shortName}}.php';
+        if (is_file($configFile)) {
+            $this->publishes([
+                $configFile => config_path('{{shortName}}.php'),
+            ], '{{shortName}}-config');
+        }
+
+        if (is_dir($base . '/database/migrations')) {
+            $this->publishes([
+                $base . '/database/migrations' => database_path('migrations'),
+            ], '{{shortName}}-migrations');
+        }
+
+        if (is_dir($base . '/resources/views')) {
+            $this->publishes([
+                $base . '/resources/views' => resource_path('views/vendor/{{shortName}}'),
+            ], '{{shortName}}-views');
+        }
+
+        if (is_dir($base . '/resources/lang')) {
+            $this->publishes([
+                $base . '/resources/lang' => resource_path('lang/vendor/{{shortName}}'),
+            ], '{{shortName}}-lang');
+        }
+    }
+
+    /**
+     * Absolute path to the installed package root (the directory above src/).
+     */
+    private function packagePath(string $sub = ''): string
+    {
+        $base = dirname(__DIR__);
+        return $sub === '' ? $base : $base . '/' . ltrim($sub, '/');
+    }
+}

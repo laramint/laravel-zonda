@@ -1,0 +1,19 @@
+<?php
+
+namespace {{Namespace}};
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+use {{ModelFqn}};
+
+class {{ClassName}}Factory extends Factory
+{
+    protected $model = {{ModelClass}}::class;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [];
+    }
+}

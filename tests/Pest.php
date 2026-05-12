@@ -13,6 +13,8 @@
 
 uses(Tests\TestCase::class)->in('Feature');
 
+require_once __DIR__ . '/Support/TestablePackageLinker.php';
+
 /*
 |--------------------------------------------------------------------------
 | Expectations
@@ -42,4 +44,19 @@ expect()->extend('toBeOne', function () {
 function something(): void
 {
     // ..
+}
+
+function rrmdir(string $dir): void
+{
+    if (! is_dir($dir)) {
+        return;
+    }
+    foreach (scandir($dir) ?: [] as $entry) {
+        if ($entry === '.' || $entry === '..') {
+            continue;
+        }
+        $p = $dir . '/' . $entry;
+        is_link($p) ? @unlink($p) : (is_dir($p) ? rrmdir($p) : @unlink($p));
+    }
+    @rmdir($dir);
 }

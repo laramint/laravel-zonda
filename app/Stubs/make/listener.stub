@@ -1,0 +1,18 @@
+<?php
+
+namespace {{Namespace}};
+
+use {{EventFqn}};
+
+class {{ClassName}}
+{
+    public function __construct()
+    {
+        //
+    }
+
+    public function handle({{EventClass}} $event): void
+    {
+        //
+    }
+}

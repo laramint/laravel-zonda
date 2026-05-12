@@ -1,0 +1,10 @@
+<?php
+
+namespace {{Namespace}};
+
+use Illuminate\Database\Eloquent\Model;
+
+class {{ClassName}} extends Model
+{
+    protected $guarded = [];
+}

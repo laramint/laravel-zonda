@@ -77,7 +77,20 @@ return [
     */
 
     'remove' => [
-        //
+        // Replaced by App\Commands\Make\* — write into the current Zonda package, not into app/.
+        LaravelZero\Framework\Commands\MakeCommand::class,
+        LaravelZero\Framework\Commands\TestMakeCommand::class,
+        Illuminate\Foundation\Console\ProviderMakeCommand::class,
+        Illuminate\Foundation\Console\RequestMakeCommand::class,
+        Illuminate\Foundation\Console\ResourceMakeCommand::class,
+        Illuminate\Foundation\Console\JobMakeCommand::class,
+        Illuminate\Foundation\Console\EventMakeCommand::class,
+        Illuminate\Foundation\Console\ListenerMakeCommand::class,
+        Illuminate\Foundation\Console\MailMakeCommand::class,
+        Illuminate\Foundation\Console\NotificationMakeCommand::class,
+        Illuminate\Foundation\Console\PolicyMakeCommand::class,
+        Illuminate\Foundation\Console\ViewMakeCommand::class,
+        Illuminate\Foundation\Console\ConfigMakeCommand::class,
     ],
 
 ];

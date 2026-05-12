@@ -1,0 +1,13 @@
+<?php
+
+namespace {{Namespace}};
+
+use Illuminate\Database\Seeder;
+
+class {{ClassName}}Seeder extends Seeder
+{
+    public function run(): void
+    {
+        //
+    }
+}
