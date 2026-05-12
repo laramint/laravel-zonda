@@ -24,7 +24,7 @@ function makePkgComposer(string $packageRoot, int $major = 12): void
         'name' => 'acme/widget',
         'autoload' => ['psr-4' => ['Acme\\Widget\\' => 'src/']],
         'extra' => [
-            'zonda' => ['package' => true, 'laravel' => $major],
+            'zonda' => ['package' => true, 'laravel' => [$major]],
             'laravel' => ['providers' => ['Acme\\Widget\\WidgetServiceProvider']],
         ],
     ]));

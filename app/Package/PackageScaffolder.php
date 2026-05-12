@@ -22,13 +22,12 @@ class PackageScaffolder
     }
 
     /**
-     * @return array{root: string, namespace: string, providerClass: string, laravelMajor: int}
+     * @param int|list<int> $laravelMajors  Either a single major or a list (e.g. [10, 11, 12]).
+     * @return array{root: string, namespace: string, providerClass: string, laravelMajors: list<int>}
      */
-    public function scaffold(string $vendor, string $name, string $targetDir, int $laravelMajor = 12): array
+    public function scaffold(string $vendor, string $name, string $targetDir, int|array $laravelMajors = [12]): array
     {
-        if (! isset(self::TESTBENCH_MATRIX[$laravelMajor])) {
-            throw new RuntimeException("Unsupported Laravel version: {$laravelMajor}. Supported: 9, 10, 11, 12, 13.");
-        }
+        $majors = $this->normalizeMajors($laravelMajors);
 
         if (is_dir($targetDir) && (new \FilesystemIterator($targetDir))->valid()) {
             throw new RuntimeException("Target directory is not empty: {$targetDir}");
@@ -55,7 +54,7 @@ class PackageScaffolder
 
         file_put_contents(
             "{$targetDir}/composer.json",
-            $this->renderComposerJson($vendor, $name, $namespace, $providerClass, $laravelMajor)
+            $this->renderComposerJson($vendor, $name, $namespace, $providerClass, $majors)
         );
 
         $this->renderStub('ServiceProvider.stub', "{$targetDir}/src/{$providerClass}.php", $replacements);
@@ -70,12 +69,38 @@ class PackageScaffolder
             'root' => realpath($targetDir) ?: $targetDir,
             'namespace' => $namespace,
             'providerClass' => $providerClass,
-            'laravelMajor' => $laravelMajor,
+            'laravelMajors' => $majors,
         ];
     }
 
-    private function renderComposerJson(string $vendor, string $name, string $namespace, string $providerClass, int $laravelMajor): string
+    /**
+     * @param int|list<int> $laravelMajors
+     * @return list<int>
+     */
+    private function normalizeMajors(int|array $laravelMajors): array
     {
+        $list = is_int($laravelMajors) ? [$laravelMajors] : $laravelMajors;
+        if ($list === []) {
+            throw new RuntimeException('At least one Laravel version must be selected.');
+        }
+        $list = array_values(array_unique(array_map('intval', $list)));
+        sort($list);
+        foreach ($list as $m) {
+            if (! isset(self::TESTBENCH_MATRIX[$m])) {
+                throw new RuntimeException("Unsupported Laravel version: {$m}. Supported: " . implode(', ', array_keys(self::TESTBENCH_MATRIX)) . '.');
+            }
+        }
+        return $list;
+    }
+
+    /**
+     * @param list<int> $majors
+     */
+    private function renderComposerJson(string $vendor, string $name, string $namespace, string $providerClass, array $majors): string
+    {
+        $illuminate = implode('|', array_map(fn (int $m) => "^{$m}.0", $majors));
+        $testbench = implode('|', array_map(fn (int $m) => self::TESTBENCH_MATRIX[$m], $majors));
+
         $data = [
             'name' => "{$vendor}/{$name}",
             'description' => "{$this->studly($name)} package.",
@@ -83,10 +108,10 @@ class PackageScaffolder
             'license' => 'MIT',
             'require' => [
                 'php' => '^8.2',
-                'illuminate/support' => "^{$laravelMajor}.0",
+                'illuminate/support' => $illuminate,
             ],
             'require-dev' => [
-                'orchestra/testbench' => self::TESTBENCH_MATRIX[$laravelMajor],
+                'orchestra/testbench' => $testbench,
                 'pestphp/pest' => '^3.0|^4.0',
             ],
             'autoload' => [
@@ -102,7 +127,7 @@ class PackageScaffolder
             'extra' => [
                 'zonda' => [
                     'package' => true,
-                    'laravel' => $laravelMajor,
+                    'laravel' => $majors,
                 ],
                 'laravel' => [
                     'providers' => ["{$namespace}\\{$providerClass}"],

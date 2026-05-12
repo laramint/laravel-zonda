@@ -5,7 +5,7 @@ namespace App\Commands;
 use App\Package\PackageScaffolder;
 use LaravelZero\Framework\Commands\Command;
 
-use function Laravel\Prompts\select;
+use function Laravel\Prompts\multiselect;
 
 class NewCommand extends Command
 {
@@ -14,7 +14,7 @@ class NewCommand extends Command
     protected $signature = 'new
                             {package : The package name in vendor/name form}
                             {--path= : Target directory (defaults to ./name)}
-                            {--laravel= : Laravel major version (9|10|11|12|13)}';
+                            {--laravel= : Laravel major versions to support (comma-separated, e.g. 10,11,12)}';
 
     protected $description = 'Scaffold a new Laravel package.';
 
@@ -27,18 +27,18 @@ class NewCommand extends Command
             return self::FAILURE;
         }
 
-        $major = $this->resolveLaravelMajor();
-        if ($major === null) {
+        $majors = $this->resolveLaravelMajors();
+        if ($majors === null) {
             return self::FAILURE;
         }
 
         [$vendor, $name] = explode('/', $package, 2);
         $target = $this->option('path') ?: getcwd() . DIRECTORY_SEPARATOR . $name;
 
-        $this->info("Scaffolding {$package} (Laravel {$major}) into {$target}");
+        $this->info("Scaffolding {$package} (Laravel " . implode(', ', $majors) . ") into {$target}");
 
         try {
-            $result = $scaffolder->scaffold($vendor, $name, $target, $major);
+            $result = $scaffolder->scaffold($vendor, $name, $target, $majors);
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
             return self::FAILURE;
@@ -47,41 +47,67 @@ class NewCommand extends Command
         $this->info("Package ready: {$result['root']}");
         $this->line("Namespace: {$result['namespace']}");
         $this->line("Provider:  {$result['namespace']}\\{$result['providerClass']}");
-        $this->line("Laravel:   {$result['laravelMajor']}");
+        $this->line("Laravel:   " . implode(', ', $result['laravelMajors']));
         $this->newLine();
         $this->line("Next steps:");
         $this->line("  cd {$name}");
         $this->line("  zonda make:command Hello");
-        $this->line("  zonda artisan list");
+        $this->line("  zonda artisan list" . (count($result['laravelMajors']) > 1 ? '   # uses Laravel ' . max($result['laravelMajors']) . ' by default; pass --laravel=N to switch' : ''));
 
         return self::SUCCESS;
     }
 
-    private function resolveLaravelMajor(): ?int
+    /**
+     * @return list<int>|null  Null on validation failure (error already printed).
+     */
+    private function resolveLaravelMajors(): ?array
     {
         $raw = $this->option('laravel');
 
         if ($raw === null) {
-            $picked = select(
-                label: 'Laravel version',
+            $picked = multiselect(
+                label: 'Which Laravel versions should this package support?',
                 options: array_combine(
                     array_map('strval', self::SUPPORTED_VERSIONS),
                     array_map(fn ($v) => "Laravel {$v}", self::SUPPORTED_VERSIONS),
                 ),
-                default: '12',
+                default: ['12'],
+                required: true,
+                hint: 'Use space to toggle, enter to confirm.',
             );
-            return (int) $picked;
+            return $this->normalize(array_map('intval', $picked));
         }
 
-        if (! ctype_digit((string) $raw)) {
-            $this->error("Invalid --laravel value: {$raw}. Expected one of: " . implode(', ', self::SUPPORTED_VERSIONS));
+        $pieces = array_values(array_filter(array_map('trim', explode(',', (string) $raw)), fn ($s) => $s !== ''));
+        if ($pieces === []) {
+            $this->error('--laravel needs at least one version.');
             return null;
         }
-        $major = (int) $raw;
-        if (! in_array($major, self::SUPPORTED_VERSIONS, true)) {
-            $this->error("Unsupported Laravel version: {$major}. Supported: " . implode(', ', self::SUPPORTED_VERSIONS));
-            return null;
+
+        $majors = [];
+        foreach ($pieces as $piece) {
+            if (! ctype_digit($piece)) {
+                $this->error("Invalid --laravel value: {$piece}. Expected one of: " . implode(', ', self::SUPPORTED_VERSIONS));
+                return null;
+            }
+            $m = (int) $piece;
+            if (! in_array($m, self::SUPPORTED_VERSIONS, true)) {
+                $this->error("Unsupported Laravel version: {$m}. Supported: " . implode(', ', self::SUPPORTED_VERSIONS));
+                return null;
+            }
+            $majors[] = $m;
         }
-        return $major;
+        return $this->normalize($majors);
+    }
+
+    /**
+     * @param list<int> $majors
+     * @return list<int>
+     */
+    private function normalize(array $majors): array
+    {
+        $majors = array_values(array_unique($majors));
+        sort($majors);
+        return $majors;
     }
 }

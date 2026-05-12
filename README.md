@@ -6,12 +6,12 @@ Built on [Laravel Zero](https://laravel-zero.com/).
 
 ## How it works
 
-1. `zonda new vendor/name` scaffolds a package skeleton (composer.json, ServiceProvider, Pest tests, etc.) and pins it to a chosen Laravel major (9–13).
+1. `zonda new vendor/name` scaffolds a package skeleton (composer.json, ServiceProvider, Pest tests, etc.) and pins it to one **or several** Laravel majors (9–13).
 2. Inside that package, `zonda make:*` writes files directly into `src/`, `database/`, `resources/`, `tests/` — no sandbox round-trip, fast and offline.
-3. `zonda artisan <anything>` lazily creates a sandbox at `~/.zonda/sandboxes/laravel-{N}/` (one per Laravel major), wires the package in via a Composer path repository + symlink, and runs `php artisan` there.
+3. `zonda artisan <anything>` lazily creates a sandbox at `~/.zonda/sandboxes/laravel-{N}/` (one per Laravel major), wires the package in via a Composer path repository + symlink, and runs `php artisan` there. A package pinned to multiple majors uses the highest by default; `--laravel=N` switches to any other pinned version.
 4. `zonda test` runs Pest/PHPUnit inside the package itself against its own `vendor/`.
 
-A package is identified by `extra.zonda.package: true` in its `composer.json`. The pinned Laravel major lives at `extra.zonda.laravel`. Sandboxes are version-keyed, so a Laravel 10 package and a Laravel 13 package coexist with their own installs and don't fight over composer state.
+A package is identified by `extra.zonda.package: true` in its `composer.json`. Supported Laravel majors live at `extra.zonda.laravel` as an array (e.g. `[10, 11, 12]`); a single int is also accepted for backward compatibility. Sandboxes are version-keyed, so a Laravel 10 package and a Laravel 13 package coexist with their own installs and don't fight over composer state.
 
 ## Requirements
 
@@ -73,9 +73,10 @@ zonda test                              # runs Pest in the package
 
 | Command | Purpose |
 |---|---|
-| `zonda new <vendor/name> [--laravel=N] [--path=...]` | Scaffold a new package. Prompts for the Laravel major if `--laravel` is omitted (supported: 9, 10, 11, 12, 13). |
-| `zonda artisan <args...>` | Run `php artisan` inside the version-matched sandbox with the current package linked. The sandbox is created on first use. |
+| `zonda new <vendor/name> [--laravel=N[,N,...]] [--path=...]` | Scaffold a new package. Shows a multi-select prompt of Laravel 9–13 if `--laravel` is omitted; pass `--laravel=12` for a single version or `--laravel=10,11,12` for a multi-version package. |
+| `zonda artisan <args...> [--laravel=N]` | Run `php artisan` inside the version-matched sandbox with the current package linked. When the package pins multiple majors, the highest is used by default; `--laravel=N` picks a different pinned major. The sandbox is created on first use. |
 | `zonda test <args...>` | Run the package's own test suite (Pest preferred, PHPUnit fallback). Runs `composer install` in the package on first use. |
+| `zonda update [--check] [--force]` | Replace the running Zonda PHAR with the latest GitHub release. Aliased to `zonda self-update`. Composer-installed users should use `composer global update laramint/laravel-zonda -W` instead — the command detects that and tells you. |
 
 ### Generators (`make:*`)
 
@@ -125,17 +126,31 @@ acme/widget/
 ```json
 {
     "extra": {
-        "zonda": { "package": true, "laravel": 12 },
+        "zonda": { "package": true, "laravel": [10, 11, 12] },
         "laravel": { "providers": ["Acme\\Widget\\WidgetServiceProvider"] }
     }
 }
 ```
 
-The pinned Laravel major drives:
+The pinned majors drive:
 
-- which sandbox runs (`~/.zonda/sandboxes/laravel-12/`)
-- the `illuminate/support` constraint (`^12.0`)
-- the matching `orchestra/testbench` pin
+- which sandbox `zonda artisan` runs against (highest by default, overridable with `--laravel=N`)
+- the `illuminate/support` constraint — `^10.0|^11.0|^12.0` for the example above
+- the matching `orchestra/testbench` constraint (union from the version matrix)
+
+A package pinned to a single major still works exactly the same — `extra.zonda.laravel: 12` and `extra.zonda.laravel: [12]` are both accepted, and resolve to a one-element major set.
+
+#### Testing against every pinned version
+
+Because each pinned major has its own sandbox, you can sanity-check your package end-to-end on the whole matrix:
+
+```bash
+zonda artisan --laravel=10 list
+zonda artisan --laravel=11 list
+zonda artisan --laravel=12 list
+```
+
+Each run uses its dedicated `~/.zonda/sandboxes/laravel-{N}/` install with your package linked in.
 
 ### Auto-loading ServiceProvider
 
@@ -195,6 +210,32 @@ class DoThingCommand extends Command
 ```
 
 For new `make:*` generators, extend `App\Support\AbstractMakeCommand` and implement `stubName()`, `relativeTargetPath()`, and `replacements()`. Use `$this->parseName($name)` for free `Blog/Post` subfolder support, and `$this->targetNamespace(...)` / `$this->targetPath(...)` to compose the namespace and file path.
+
+## Updating
+
+### PHAR install
+
+```bash
+zonda update          # download and replace the running PHAR
+zonda update --check  # just compare current vs. latest, don't download
+zonda update --force  # re-download even if already on the latest version
+```
+
+How it works: the command fetches `releases/latest` from the GitHub API to learn the newest tag, compares it to the version baked into the PHAR (`zonda --version`), then downloads the `zonda` asset for that tag into `<binary-path>.new`, sanity-checks that it's a real PHAR, sets it executable, and renames it over the running binary. The rename is atomic on Unix — the in-memory PHP process keeps running off the old inode, and the next invocation picks up the new file.
+
+If the binary lives somewhere root-owned (`/usr/local/bin/zonda` is typical), you'll need:
+
+```bash
+sudo zonda update
+```
+
+### Composer global install
+
+```bash
+composer global update laramint/laravel-zonda -W
+```
+
+Running `zonda update` on a Composer install will detect that case and print this command for you — it won't try to overwrite Composer-managed files.
 
 ## Build the PHAR locally
 

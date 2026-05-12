@@ -5,7 +5,7 @@ use App\Package\PackageScaffolder;
 beforeEach(function () {
     $this->tmp = sys_get_temp_dir() . '/zonda-make-' . uniqid();
     mkdir($this->tmp, 0755, true);
-    (new PackageScaffolder())->scaffold('acme', 'widget', $this->tmp . '/widget', 12);
+    (new PackageScaffolder())->scaffold('acme', 'widget', $this->tmp . '/widget', [12]);
     $this->pkg = $this->tmp . '/widget';
     $this->originalCwd = getcwd();
     chdir($this->pkg);
