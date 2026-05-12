@@ -49,6 +49,21 @@ class PackageLinker
         return $state['linked'] ?? null;
     }
 
+    /**
+     * Force a fresh link even when state.json already matches the package's
+     * current root. Used by `zonda resync` to recover from cases where the
+     * sandbox composer.json or vendor tree has drifted out of step with the
+     * package on disk.
+     */
+    public function relink(PackageContext $pkg): void
+    {
+        $path = $this->sandbox->statePath();
+        if (is_file($path)) {
+            @unlink($path);
+        }
+        $this->link($pkg);
+    }
+
     private function upsertPathRepository(array $repositories, string $absolutePath): array
     {
         $entry = [

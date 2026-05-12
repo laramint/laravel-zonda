@@ -77,6 +77,7 @@ zonda test                              # runs Pest in the package
 | `zonda artisan <args...> [--laravel=N]` | Run `php artisan` inside the version-matched sandbox with the current package linked. When the package pins multiple majors, the highest is used by default; `--laravel=N` picks a different pinned major. The sandbox is created on first use. |
 | `zonda test <args...>` | Run the package's own test suite (Pest preferred, PHPUnit fallback). Runs `composer install` in the package on first use. |
 | `zonda update [--check] [--force]` | Replace the running Zonda PHAR with the latest GitHub release. Aliased to `zonda self-update`. Composer-installed users should use `composer global update laramint/laravel-zonda -W` instead — the command detects that and tells you. |
+| `zonda resync [--laravel=N] [--all] [--reset]` | Re-link the current package into its sandbox(es). Useful after moving the package directory or when the sandbox got into a weird state. `--all` covers every pinned Laravel major; `--reset` deletes the sandbox first and rebuilds it. |
 
 ### Generators (`make:*`)
 
@@ -181,10 +182,30 @@ State lives under `~/.zonda/sandboxes/laravel-<N>/`:
 
 `zonda artisan ...` is the only command that needs the sandbox; `make:*` and `new` are offline. Linking is cached in `state.json`, so repeated artisan calls from the same package don't re-run `composer update`.
 
-To rebuild from scratch, delete the relevant directory:
+To rebuild from scratch you can use the dedicated command, which is safer than `rm -rf` because it also re-links the package immediately:
+
+```bash
+zonda resync --reset              # nuke + rebuild the default-pinned sandbox
+zonda resync --reset --all        # do that for every pinned Laravel major
+```
+
+Or, equivalently, the manual route:
 
 ```bash
 rm -rf ~/.zonda/sandboxes/laravel-12   # forces a fresh L12 sandbox on next zonda artisan
+```
+
+### What if I move the package directory?
+
+You usually don't need to do anything — `zonda artisan ...` detects that `state.json`'s cached path no longer matches the current package root, drops the stale path-repo entry from the sandbox's `composer.json`, writes the new one, runs `composer update <vendor/name>`, and updates `state.json`. Next call is back to the fast path.
+
+If that auto-heal doesn't kick in (e.g. you have two clones of the same package and the state happens to match the wrong one, or the sandbox's vendor tree got corrupted), force it explicitly:
+
+```bash
+cd /new/location/of/the/package
+zonda resync                # forces a fresh link from this directory
+zonda resync --all          # do it for every pinned Laravel major
+zonda resync --reset        # nuke the sandbox first, then re-link
 ```
 
 ## Adding your own top-level commands

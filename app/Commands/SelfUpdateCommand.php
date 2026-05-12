@@ -70,6 +70,17 @@ class SelfUpdateCommand extends Command
             return self::FAILURE;
         }
 
+        // The temp file goes next to the binary so the final rename is atomic
+        // (same filesystem). That means we need write access to the binary's
+        // directory before doing anything else.
+        $targetDir = dirname($pharPath);
+        if (! is_writable($targetDir)) {
+            $this->error("No write permission for {$targetDir}.");
+            $this->line('Re-run with elevated privileges:');
+            $this->line('  <info>sudo zonda self-update' . ($this->option('force') ? ' --force' : '') . '</info>');
+            return self::FAILURE;
+        }
+
         $tmp = $pharPath . '.new';
         $this->info("Downloading {$tag}...");
         try {
@@ -88,6 +99,17 @@ class SelfUpdateCommand extends Command
 
         @chmod($tmp, 0755);
 
+        // After this point we cannot trigger any further autoloads from the
+        // PHAR. The file on disk is about to be replaced, and the running
+        // process still lazy-loads (and lazy-decompresses) classes from it —
+        // any unloaded class would fail to read after rename. We therefore:
+        //   1. Eagerly resolve the success-message text and any cleanup paths
+        //      while the original PHAR is still intact.
+        //   2. Do the rename.
+        //   3. Use raw fwrite (no Symfony Console) for the success line.
+        //   4. Hard-exit so Laravel's shutdown doesn't autoload anything else.
+        $successMessage = "Updated Zonda to {$tag}.\n";
+
         if (! @rename($tmp, $pharPath)) {
             @unlink($tmp);
             $this->error("Could not replace {$pharPath} (permission denied?).");
@@ -96,8 +118,8 @@ class SelfUpdateCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info("Updated Zonda to {$tag}.");
-        return self::SUCCESS;
+        fwrite(STDOUT, $successMessage);
+        exit(0);
     }
 
     /**
