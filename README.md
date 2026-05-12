@@ -1,4 +1,4 @@
-# Zonda
+<p align="center"><img src="art/logo.png" alt="Zonda" width="400"></p>
 
 A CLI that lets you build Laravel packages without a host Laravel app. Run `zonda` commands from inside a package directory and Zonda transparently boots a Laravel sandbox, links your package into it, and runs `artisan` against it — so package work feels like working inside a regular Laravel project.
 
