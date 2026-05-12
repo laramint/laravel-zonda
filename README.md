@@ -189,6 +189,19 @@ php zonda app:build zonda --build-version=0.1.0
 # → builds/zonda
 ```
 
+If you get `Failed to compile the application.`, your PHP has `phar.readonly=On` (the default on most distros and Homebrew). Two ways to fix it:
+
+```bash
+# Quick: permanently flip it in your loaded php.ini
+php -r 'echo php_ini_loaded_file().PHP_EOL;'
+# edit that file → set:  phar.readonly = Off
+
+# Or build via box directly (no wrapper subprocess to worry about):
+php -d phar.readonly=0 vendor/laravel-zero/framework/bin/box compile --config=box.json
+```
+
+CI doesn't hit this — the release workflow sets `phar.readonly=Off` explicitly via `shivammathur/setup-php`.
+
 ## Development
 
 ```bash
