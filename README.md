@@ -23,14 +23,18 @@ A package is identified by `extra.zonda.package: true` in its `composer.json`. T
 ### Composer global
 
 ```bash
-composer global require laramint/laravel-zonda
+composer global require laramint/laravel-zonda -W
 ```
+
+The `-W` (`--with-all-dependencies`) flag is recommended: Composer's global namespace often has other CLIs installed that pin `illuminate/*` to older majors, and without `-W` you'll see errors like *"fixed to v11.x (lock file version) by a partial update"*. `-W` lets Composer upgrade those locked transitive deps to satisfy Zonda's requirements.
 
 Make sure Composer's global `bin` is on your `PATH` (usually `~/.composer/vendor/bin` or `~/.config/composer/vendor/bin`), then:
 
 ```bash
 zonda --help
 ```
+
+If you'd rather not touch your global Composer state at all, use the [PHAR install](#phar) below — it's self-contained and won't conflict with anything.
 
 ### PHAR
 
