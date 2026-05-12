@@ -41,6 +41,37 @@ class {{ProviderClass}} extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing($base);
+            $this->registerCommands($base);
+        }
+    }
+
+    private function registerCommands(string $base): void
+    {
+        $dir = $base . '/src/Console/Commands';
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        $commands = [];
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+            $relative = ltrim(str_replace($dir, '', $file->getPathname()), DIRECTORY_SEPARATOR);
+            $classPath = substr($relative, 0, -4);
+            $subNamespace = str_replace(DIRECTORY_SEPARATOR, '\\', $classPath);
+            $fqn = __NAMESPACE__ . '\\Console\\Commands\\' . $subNamespace;
+            if (class_exists($fqn) && is_subclass_of($fqn, \Illuminate\Console\Command::class)) {
+                $commands[] = $fqn;
+            }
+        }
+
+        if ($commands !== []) {
+            $this->commands($commands);
         }
     }
 
